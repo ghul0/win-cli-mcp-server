@@ -1,70 +1,23 @@
 {
-  "security": {
-    "maxCommandLength": 1000,
-    "blockedCommands": [
-      "rm",
-      "del",
-      "rmdir",
-      "format",
-      "shutdown",
-      "restart",
-      "reg",
-      "regedit",
-      "net",
-      "netsh",
-      "takeown",
-      "icacls"
-    ],
-    "blockedArguments": ["-rf", "/f", "/s", "/q"],
-    "allowedPaths": ["C:\\Users\\YourUsername", "C:\\Projects"],
-    "restrictWorkingDirectory": true,
-    "logCommands": true,
-    "maxHistorySize": 1000,
-    "commandTimeout": 30,
-    "enableInjectionProtection": true
-  },
-  "shells": {
-    "powershell": {
-      "enabled": true,
-      "command": "powershell.exe",
-      "args": ["-NoProfile", "-NonInteractive", "-Command"],
-      "blockedOperators": ["&", "|", ";", "`"]
-    },
-    "cmd": {
-      "enabled": true,
-      "command": "cmd.exe",
-      "args": ["/c"],
-      "blockedOperators": ["&", "|", ";", "`"]
-    },
-    "gitbash": {
-      "enabled": true,
-      "command": "C:\\Program Files\\Git\\bin\\bash.exe",
-      "args": ["-c"],
-      "blockedOperators": ["&", "|", ";", "`"]
-    }
-  },
   "ssh": {
-    "enabled": false,
+    "enabled": true,
     "defaultTimeout": 30,
     "maxConcurrentSessions": 5,
     "keepaliveInterval": 10000,
+    "keepaliveCountMax": 3,
     "readyTimeout": 20000,
     "connections": {
-      "raspberry-pi": {
-        "host": "raspberrypi.local",
+      "my-server": {
+        "host": "192.168.1.100",
         "port": 22,
-        "username": "pi",
-        "password": "raspberry",
-        "keepaliveInterval": 10000,
-        "readyTimeout": 20000
+        "username": "myuser",
+        "password": "mypassword"
       },
-      "dev-server": {
-        "host": "dev.example.com",
+      "production": {
+        "host": "prod.example.com",
         "port": 22,
-        "username": "admin",
-        "privateKeyPath": "C:\\Users\\YourUsername\\.ssh\\id_rsa",
-        "keepaliveInterval": 10000,
-        "readyTimeout": 20000
+        "username": "deploy",
+        "privateKeyPath": "/home/user/.ssh/id_rsa"
       }
     }
   }

@@ -1,56 +1,40 @@
-# Windows CLI MCP Server
-[![NPM Downloads](https://img.shields.io/npm/dt/@simonb97/server-win-cli.svg?style=flat)](https://www.npmjs.com/package/@simonb97/server-win-cli)
-[![NPM Version](https://img.shields.io/npm/v/@simonb97/server-win-cli.svg?style=flat)](https://www.npmjs.com/package/@simonb97/server-win-cli?activeTab=versions)
-[![smithery badge](https://smithery.ai/badge/@simonb97/server-win-cli)](https://smithery.ai/server/@simonb97/server-win-cli)
+# MCP SSH Server
 
-[MCP server](https://modelcontextprotocol.io/introduction) for secure command-line interactions on Windows systems, enabling controlled access to PowerShell, CMD, Git Bash shells, and remote systems via SSH. It allows MCP clients (like [Claude Desktop](https://claude.ai/download)) to perform operations on your system, similar to [Open Interpreter](https://github.com/OpenInterpreter/open-interpreter).
+[![smithery badge](https://smithery.ai/badge/mcp-ssh)](https://smithery.ai/server/mcp-ssh)
+
+[MCP server](https://modelcontextprotocol.io/introduction) for secure SSH command execution on remote Linux systems. It allows MCP clients (like [Claude Desktop](https://claude.ai/download)) to execute commands on configured SSH hosts.
 
 >[!IMPORTANT]
-> This MCP server provides direct access to your system's command line interface and remote systems via SSH. When enabled, it grants access to your files, environment variables, command execution capabilities, and remote server management.
+> This MCP server provides direct SSH access to remote systems. When enabled, it can execute commands on any configured SSH host.
 >
-> - Review and restrict allowed paths and SSH connections
-> - Enable directory restrictions
-> - Configure command blocks
-> - Consider security implications
+> - Only configure trusted SSH connections
+> - Use key-based authentication when possible
+> - Review SSH timeout and connection settings
+> - Consider security implications of remote access
 >
 > See [Configuration](#configuration) for more details.
 
-- [Features](#features)
-- [Usage with Claude Desktop](#usage-with-claude-desktop)
-- [Configuration](#configuration)
-  - [Configuration Locations](#configuration-locations)
-  - [Default Configuration](#default-configuration)
-  - [Configuration Settings](#configuration-settings)
-    - [Security Settings](#security-settings)
-    - [Shell Configuration](#shell-configuration)
-    - [SSH Configuration](#ssh-configuration)
-- [API](#api)
-  - [Tools](#tools)
-  - [Resources](#resources)
-- [Security Considerations](#security-considerations)
-- [License](#license)
-
 ## Features
 
-- **Multi-Shell Support**: Execute commands in PowerShell, Command Prompt (CMD), and Git Bash
-- **SSH Support**: Execute commands on remote systems via SSH
-- **Resource Exposure**: View SSH connections, current directory, and configuration as MCP resources
-- **Security Controls**:
-  - Command and SSH command blocking (full paths, case variations)
-  - Working directory validation
-  - Maximum command length limits
-  - Command logging and history tracking
-  - Smart argument validation
-- **Configurable**:
-  - Custom security rules
-  - Shell-specific settings
-  - SSH connection profiles
-  - Path restrictions
-  - Blocked command lists
+- **SSH Remote Execution**: Execute commands on remote Linux systems via SSH
+- **Connection Management**: Automatic connection pooling and reconnection
+- **Authentication Support**: Both password and private key authentication
+- **Simple API**: Just two tools - `ssh_execute` and `ssh_disconnect`
+- **Configurable**: Define multiple SSH connections with custom settings
 
-See the [API](#api) section for more details on the tools and resources the server provides to MCP clients.
+## Installation
 
-**Note**: The server will only allow operations within configured directories, with allowed commands, and on configured SSH connections.
+### Using npx
+
+```bash
+npx mcp-ssh
+```
+
+### Global Installation
+
+```bash
+npm install -g mcp-ssh
+```
 
 ## Usage with Claude Desktop
 
@@ -59,399 +43,179 @@ Add this to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "windows-cli": {
+    "ssh": {
       "command": "npx",
-      "args": ["-y", "@simonb97/server-win-cli"]
+      "args": ["-y", "mcp-ssh"]
     }
   }
 }
 ```
 
-For use with a specific config file, add the `--config` flag:
+For use with a specific config file:
 
 ```json
 {
   "mcpServers": {
-    "windows-cli": {
+    "ssh": {
       "command": "npx",
       "args": [
         "-y",
-        "@simonb97/server-win-cli",
+        "mcp-ssh",
         "--config",
-        "path/to/your/config.json"
+        "/path/to/your/config.json"
       ]
     }
   }
 }
 ```
 
-After configuring, you can:
-- Execute commands directly using the available tools
-- View configured SSH connections and server configuration in the Resources section
-- Manage SSH connections through the provided tools
-
 ## Configuration
 
-The server uses a JSON configuration file to customize its behavior. You can specify settings for security controls, shell configurations, and SSH connections.
+The server requires a configuration file to define SSH connections.
 
-1. To create a default config file, either:
+### Quick Start
 
-**a)** copy `config.json.example` to `config.json`, or
-
-**b)** run:
+1. Create a configuration file:
 
 ```bash
-npx @simonb97/server-win-cli --init-config ./config.json
+npx mcp-ssh --init-config ~/.mcp-ssh/config.json
 ```
 
-2. Then set the `--config` flag to point to your config file as described in the [Usage with Claude Desktop](#usage-with-claude-desktop) section.
+2. Edit the configuration file to add your SSH connections
 
-### Configuration Locations
+3. Update your Claude Desktop configuration to use the config file
 
-The server looks for configuration in the following locations (in order):
-
-1. Path specified by `--config` flag
-2. ./config.json in current directory
-3. ~/.win-cli-mcp/config.json in user's home directory
-
-If no configuration file is found, the server will use a default (restricted) configuration:
-
-### Default Configuration
-
-**Note**: The default configuration is designed to be restrictive and secure. Find more details on each setting in the [Configuration Settings](#configuration-settings) section.
+### Configuration File Format
 
 ```json
 {
-  "security": {
-    "maxCommandLength": 2000,
-    "blockedCommands": [
-      "rm",
-      "del",
-      "rmdir",
-      "format",
-      "shutdown",
-      "restart",
-      "reg",
-      "regedit",
-      "net",
-      "netsh",
-      "takeown",
-      "icacls"
-    ],
-    "blockedArguments": [
-      "--exec",
-      "-e",
-      "/c",
-      "-enc",
-      "-encodedcommand",
-      "-command",
-      "--interactive",
-      "-i",
-      "--login",
-      "--system"
-    ],
-    "allowedPaths": ["User's home directory", "Current working directory"],
-    "restrictWorkingDirectory": true,
-    "logCommands": true,
-    "maxHistorySize": 1000,
-    "commandTimeout": 30,
-    "enableInjectionProtection": true
-  },
-  "shells": {
-    "powershell": {
-      "enabled": true,
-      "command": "powershell.exe",
-      "args": ["-NoProfile", "-NonInteractive", "-Command"],
-      "blockedOperators": ["&", "|", ";", "`"]
-    },
-    "cmd": {
-      "enabled": true,
-      "command": "cmd.exe",
-      "args": ["/c"],
-      "blockedOperators": ["&", "|", ";", "`"]
-    },
-    "gitbash": {
-      "enabled": true,
-      "command": "C:\\Program Files\\Git\\bin\\bash.exe",
-      "args": ["-c"],
-      "blockedOperators": ["&", "|", ";", "`"]
-    }
-  },
   "ssh": {
-    "enabled": false,
+    "enabled": true,
     "defaultTimeout": 30,
     "maxConcurrentSessions": 5,
     "keepaliveInterval": 10000,
     "keepaliveCountMax": 3,
     "readyTimeout": 20000,
-    "connections": {}
-  }
-}
-```
-
-### Configuration Settings
-
-The configuration file is divided into three main sections: `security`, `shells`, and `ssh`.
-
-#### Security Settings
-
-```json
-{
-  "security": {
-    // Maximum allowed length for any command
-    "maxCommandLength": 1000,
-
-    // Commands to block - blocks both direct use and full paths
-    // Example: "rm" blocks both "rm" and "C:\\Windows\\System32\\rm.exe"
-    // Case-insensitive: "del" blocks "DEL.EXE", "del.cmd", etc.
-    "blockedCommands": [
-      "rm", // Delete files
-      "del", // Delete files
-      "rmdir", // Delete directories
-      "format", // Format disks
-      "shutdown", // Shutdown system
-      "restart", // Restart system
-      "reg", // Registry editor
-      "regedit", // Registry editor
-      "net", // Network commands
-      "netsh", // Network commands
-      "takeown", // Take ownership of files
-      "icacls" // Change file permissions
-    ],
-
-    // Arguments that will be blocked when used with any command
-    // Note: Checks each argument independently - "cd warm_dir" won't be blocked just because "rm" is in blockedCommands
-    "blockedArguments": [
-      "--exec", // Execution flags
-      "-e", // Short execution flags
-      "/c", // Command execution in some shells
-      "-enc", // PowerShell encoded commands
-      "-encodedcommand", // PowerShell encoded commands
-      "-command", // Direct PowerShell command execution
-      "--interactive", // Interactive mode which might bypass restrictions
-      "-i", // Short form of interactive
-      "--login", // Login shells might have different permissions
-      "--system" // System level operations
-    ],
-
-    // List of directories where commands can be executed
-    "allowedPaths": ["C:\\Users\\YourUsername", "C:\\Projects"],
-
-    // If true, commands can only run in allowedPaths
-    "restrictWorkingDirectory": true,
-
-    // If true, saves command history
-    "logCommands": true,
-
-    // Maximum number of commands to keep in history
-    "maxHistorySize": 1000,
-
-    // Timeout for command execution in seconds (default: 30)
-    "commandTimeout": 30,
-
-    // Enable or disable protection against command injection (covers ;, &, |, \`)
-    "enableInjectionProtection": true
-  }
-}
-```
-
-#### Shell Configuration
-
-```json
-{
-  "shells": {
-    "powershell": {
-      // Enable/disable this shell
-      "enabled": true,
-      // Path to shell executable
-      "command": "powershell.exe",
-      // Default arguments for the shell
-      "args": ["-NoProfile", "-NonInteractive", "-Command"],
-      // Optional: Specify which command operators to block
-      "blockedOperators": ["&", "|", ";", "`"]  // Block all command chaining
-    },
-    "cmd": {
-      "enabled": true,
-      "command": "cmd.exe",
-      "args": ["/c"],
-      "blockedOperators": ["&", "|", ";", "`"]  // Block all command chaining
-    },
-    "gitbash": {
-      "enabled": true,
-      "command": "C:\\Program Files\\Git\\bin\\bash.exe",
-      "args": ["-c"],
-      "blockedOperators": ["&", "|", ";", "`"]  // Block all command chaining
-    }
-  }
-}
-```
-
-#### SSH Configuration
-
-```json
-{
-  "ssh": {
-    // Enable/disable SSH functionality
-    "enabled": false,
-
-    // Default timeout for SSH commands in seconds
-    "defaultTimeout": 30,
-
-    // Maximum number of concurrent SSH sessions
-    "maxConcurrentSessions": 5,
-
-    // Interval for sending keepalive packets (in milliseconds)
-    "keepaliveInterval": 10000,
-
-    // Maximum number of failed keepalive attempts before disconnecting
-    "keepaliveCountMax": 3,
-
-    // Timeout for establishing SSH connections (in milliseconds)
-    "readyTimeout": 20000,
-
-    // SSH connection profiles
     "connections": {
-      // NOTE: these examples are not set in the default config!
-      // Example: Local Raspberry Pi
-      "raspberry-pi": {
-        "host": "raspberrypi.local", // Hostname or IP address
-        "port": 22, // SSH port
-        "username": "pi", // SSH username
-        "password": "raspberry", // Password authentication (if not using key)
-        "keepaliveInterval": 10000, // Override global keepaliveInterval
-        "keepaliveCountMax": 3, // Override global keepaliveCountMax
-        "readyTimeout": 20000 // Override global readyTimeout
-      },
-      // Example: Remote server with key authentication
-      "dev-server": {
-        "host": "dev.example.com",
+      "my-server": {
+        "host": "192.168.1.100",
         "port": 22,
-        "username": "admin",
-        "privateKeyPath": "C:\\Users\\YourUsername\\.ssh\\id_rsa", // Path to private key
-        "keepaliveInterval": 10000,
-        "keepaliveCountMax": 3,
-        "readyTimeout": 20000
+        "username": "myuser",
+        "password": "mypassword"
+      },
+      "production": {
+        "host": "prod.example.com",
+        "port": 22,
+        "username": "deploy",
+        "privateKeyPath": "/home/user/.ssh/id_rsa"
       }
     }
   }
 }
 ```
 
+### Configuration Options
+
+#### Global SSH Settings
+
+- `enabled` (boolean): Must be `true` for the server to function
+- `defaultTimeout` (number): Default command execution timeout in seconds (default: 30)
+- `maxConcurrentSessions` (number): Maximum concurrent SSH sessions (default: 5)
+- `keepaliveInterval` (number): Keepalive packet interval in milliseconds (default: 10000)
+- `keepaliveCountMax` (number): Maximum keepalive failures before disconnect (default: 3)
+- `readyTimeout` (number): Connection establishment timeout in milliseconds (default: 20000)
+
+#### Connection Settings
+
+Each connection in the `connections` object has:
+
+- `host` (string, required): Hostname or IP address
+- `port` (number, required): SSH port (default: 22)
+- `username` (string, required): SSH username
+- `password` (string, optional): Password for authentication
+- `privateKeyPath` (string, optional): Path to private key file
+- `keepaliveInterval` (number, optional): Override global keepalive interval
+- `keepaliveCountMax` (number, optional): Override global keepalive count
+- `readyTimeout` (number, optional): Override global ready timeout
+
+**Note**: You must provide either `password` or `privateKeyPath` for authentication.
+
+### Configuration File Locations
+
+The server looks for configuration in these locations (in order):
+
+1. Path specified by `--config` flag
+2. `./config.json` in current directory
+3. `~/.mcp-ssh/config.json` in user's home directory
+
 ## API
 
 ### Tools
 
-- **execute_command**
+#### ssh_execute
 
-  - Execute a command in the specified shell
-  - Inputs:
-    - `shell` (string): Shell to use ("powershell", "cmd", or "gitbash")
-    - `command` (string): Command to execute
-    - `workingDir` (optional string): Working directory
-  - Returns command output as text, or error message if execution fails
+Execute a command on a remote system via SSH.
 
-- **get_command_history**
+**Input:**
+- `connectionId` (string): ID of the SSH connection to use
+- `command` (string): Command to execute
 
-  - Get the history of executed commands
-  - Input: `limit` (optional number)
-  - Returns timestamped command history with outputs
+**Returns:** Command output as text, or error message if execution fails
 
-- **ssh_execute**
+**Example:**
+```json
+{
+  "connectionId": "my-server",
+  "command": "ls -la /var/log"
+}
+```
 
-  - Execute a command on a remote system via SSH
-  - Inputs:
-    - `connectionId` (string): ID of the SSH connection to use
-    - `command` (string): Command to execute
-  - Returns command output as text, or error message if execution fails
+#### ssh_disconnect
 
-- **ssh_disconnect**
-  - Disconnect from an SSH server
-  - Input:
-    - `connectionId` (string): ID of the SSH connection to disconnect
-  - Returns confirmation message
+Disconnect from an SSH server.
 
-- **create_ssh_connection**
-  - Create a new SSH connection
-  - Inputs:
-    - `connectionId` (string): ID for the new SSH connection
-    - `connectionConfig` (object): Connection configuration details including host, port, username, and either password or privateKeyPath
-  - Returns confirmation message
+**Input:**
+- `connectionId` (string): ID of the SSH connection to disconnect
 
-- **read_ssh_connections**
-  - Read all configured SSH connections
-  - Returns a list of all SSH connections from the configuration
+**Returns:** Confirmation message
 
-- **update_ssh_connection**
-  - Update an existing SSH connection
-  - Inputs:
-    - `connectionId` (string): ID of the SSH connection to update
-    - `connectionConfig` (object): New connection configuration details
-  - Returns confirmation message
-
-- **delete_ssh_connection**
-  - Delete an SSH connection
-  - Input:
-    - `connectionId` (string): ID of the SSH connection to delete
-  - Returns confirmation message
-
-- **get_current_directory**
-  - Get the current working directory of the server
-  - Returns the current working directory path
-
-### Resources
-
-- **SSH Connections**
-  - URI format: `ssh://{connectionId}`
-  - Contains connection details with sensitive information masked
-  - One resource for each configured SSH connection
-  - Example: `ssh://raspberry-pi` shows configuration for the "raspberry-pi" connection
-
-- **SSH Configuration**
-  - URI: `ssh://config`
-  - Contains overall SSH configuration and all connections (with passwords masked)
-  - Shows settings like defaultTimeout, maxConcurrentSessions, and the list of connections
-
-- **Current Directory**
-  - URI: `cli://currentdir`
-  - Contains the current working directory of the CLI server
-  - Shows the path where commands will execute by default
-
-- **CLI Configuration**
-  - URI: `cli://config`
-  - Contains the CLI server configuration (excluding sensitive data)
-  - Shows security settings, shell configurations, and SSH settings
+**Example:**
+```json
+{
+  "connectionId": "my-server"
+}
+```
 
 ## Security Considerations
 
-### Built-in Security Features (Always Active)
+- **Authentication**: Store private keys securely and use appropriate file permissions (600)
+- **Network Security**: Use SSH keys instead of passwords when possible
+- **Connection Limits**: Configure appropriate timeouts and connection limits
+- **Host Verification**: The server currently does not verify host keys (accepts any host)
+- **Command Execution**: All commands are executed with the privileges of the SSH user
 
-The following security features are hard-coded into the server and cannot be disabled:
+## Development
 
-- **Case-insensitive command blocking**: All command blocking is case-insensitive (e.g., "DEL.EXE", "del.cmd", etc. are all blocked if "del" is in blockedCommands)
-- **Smart path parsing**: The server parses full command paths to prevent bypass attempts (blocking "C:\\Windows\\System32\\rm.exe" if "rm" is blocked)
-- **Command parsing intelligence**: False positives are avoided (e.g., "warm_dir" is not blocked just because "rm" is in blockedCommands)
-- **Input validation**: All user inputs are validated before execution
-- **Shell process management**: Processes are properly terminated after execution or timeout
-- **Sensitive data masking**: Passwords are automatically masked in resources (replaced with ********)
+### Building from Source
 
-### Configurable Security Features (Active by Default)
+```bash
+git clone https://github.com/your-username/mcp-ssh.git
+cd mcp-ssh
+npm install
+npm run build
+```
 
-These security features are configurable through the config.json file:
+### Running Tests
 
-- **Command blocking**: Commands specified in `blockedCommands` array are blocked (default includes dangerous commands like rm, del, format)
-- **Argument blocking**: Arguments specified in `blockedArguments` array are blocked (default includes potentially dangerous flags)
-- **Command injection protection**: Prevents command chaining (enabled by default through `enableInjectionProtection: true`)
-- **Working directory restriction**: Limits command execution to specified directories (enabled by default through `restrictWorkingDirectory: true`)
-- **Command length limit**: Restricts maximum command length (default: 2000 characters)
-- **Command timeout**: Terminates commands that run too long (default: 30 seconds)
-- **Command logging**: Records command history (enabled by default through `logCommands: true`)
+```bash
+npm test
+```
 
-### Important Security Warnings
+### Development Mode
 
-These are not features but important security considerations to be aware of:
-
-- **Environment access**: Commands may have access to environment variables, which could contain sensitive information
-- **File system access**: Commands can read/write files within allowed paths - carefully configure `allowedPaths` to prevent access to sensitive data
+```bash
+npm run watch
+```
 
 ## License
 

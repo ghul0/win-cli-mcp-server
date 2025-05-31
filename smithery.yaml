@@ -10,7 +10,7 @@ startCommand:
     properties:
       configPath:
         type: string
-        description: Path to the configuration file for the Windows CLI MCP server.
+        description: Path to the configuration file for the SSH MCP server.
   commandFunction:
     # A function that produces the CLI command to start the MCP on stdio.
     |-
