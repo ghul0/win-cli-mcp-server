@@ -6,3 +6,5 @@ dist/
 config.json
 .cursorrules
 .history
+*.tgz
+claude_desktop_config.json
